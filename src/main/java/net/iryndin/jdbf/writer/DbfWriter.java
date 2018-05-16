@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Date;
@@ -15,7 +16,8 @@ import net.iryndin.jdbf.util.BitUtils;
 import net.iryndin.jdbf.util.DbfMetadataUtils;
 import net.iryndin.jdbf.util.JdbfUtils;
 
-public class DbfWriter {
+public class DbfWriter
+{
 	private OutputStream out;
 	private DbfMetadata metadata;
 	private Charset stringCharset = Charset.defaultCharset();
@@ -76,7 +78,14 @@ public class DbfWriter {
 			writeBoolean(f, (Boolean)o);
 			break;
 		case Numeric:
-			writeBigDecimal(f, (BigDecimal)o);
+                        if (f.getNumberOfDecimalPlaces() == 0 && o instanceof java.lang.Integer)
+                        {
+                           writeString(f, String.format(new String("%" + new Integer(f.getLength()).toString() + "d"), ((Integer)o).intValue()));
+			}		
+                        else
+			{
+			  writeBigDecimal(f, (BigDecimal)o);
+                        }
 			break;
 		case Float:
 			if (o instanceof Double)
@@ -114,7 +123,7 @@ public class DbfWriter {
 
 	private void writeBigDecimal(DbfField f, BigDecimal value) {
 		if (value != null) {
-			String s = value.toPlainString();
+			String s = String.format(new String("%" + new Integer(f.getLength()).toString() + "s"), value.toPlainString());
 			byte[] bytes = s.getBytes();
 			if (bytes.length > f.getLength()) {
 				byte[] newBytes = new byte[f.getLength()];
@@ -212,6 +221,7 @@ public class DbfWriter {
 	private void writeInteger(DbfField f, Integer i) {
 		if (i != null) {
 			ByteBuffer bb = ByteBuffer.allocate(4);
+			// bb.order(ByteOrder.LITTLE_ENDIAN);
 			bb.putInt(i);
 			System.arraycopy(bb.array(), 0, recordBuffer, f.getOffset(), bb.capacity());
 		} else {
